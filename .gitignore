@@ -13,3 +13,6 @@ venv/
 
 # Other
 .DS_Store
+
+# React 
+./financeai/node_modules/
