@@ -1,95 +1,183 @@
-{% extends "base.html" %}
-
-{% block content %}
-<div class="chat-container" id="chat-container">
-    <div class="chat-box assistant">
-        <div class="chat-message">Olá! Eu sou seu consultor de investimentos. Vamos começar? Qual é o seu nome?</div>
-    </div>
-</div>
-<div class="chat-input-container">
-    <form id="chat-form">
-        <div class="form-group">
-            <input type="text" class="form-control" id="chat-input" required autocomplete="off">
-        </div>
-        <button type="submit" class="btn btn-primary">Enviar</button>
-    </form>
-</div>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const chatContainer = document.getElementById('chat-container');
-    const chatForm = document.getElementById('chat-form');
-    const chatInput = document.getElementById('chat-input');
-
-    let step = 0;
-    const userData = {};
-
-    const questions = [
-        "Qual é a sua idade?",
-        "Qual é o seu objetivo financeiro?",
-        "Qual é a sua tolerância ao risco?",
-        "Quais são seus investimentos atuais?",
-        "Qual é a sua renda mensal?",
-        "Quais são suas despesas mensais?",
-        "Qual é o seu horizonte de tempo (em anos)?",
-        "Qual é a sua experiência com investimentos?"
-    ];
-
-    const fields = [
-        "nome",
-        "idade",
-        "objetivo",
-        "tolerancia_risco",
-        "investimentos",
-        "renda_mensal",
-        "despesas_mensais",
-        "horizonte_tempo",
-        "experiencia_investimentos"
-    ];
-
-    chatForm.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const userMessage = chatInput.value;
-        addMessage('user', userMessage);
-        userData[fields[step]] = userMessage;
-        chatInput.value = '';
-        step++;
-        if (step < questions.length) {
-            setTimeout(() => addMessage('assistant', questions[step]), 1000);
-        } else {
-            setTimeout(sendUserData, 1000);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultor de Investimentos</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .chat-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            height: 70vh;
+            overflow-y: auto;
         }
-    });
+        .chat-box {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-box.assistant .chat-message {
+            background-color: #f1f1f1;
+            border-radius: 10px;
+            padding: 10px;
+            align-self: flex-start;
+            margin-bottom: 5px;
+        }
+        .chat-box.user .chat-message {
+            background-color: #007bff;
+            color: white;
+            border-radius: 10px;
+            padding: 10px;
+            align-self: flex-end;
+            margin-bottom: 5px;
+        }
+        .chat-input-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .chat-input-container input {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .chat-input-container button {
+            min-width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container" id="chat-container">
+        <div class="chat-box assistant">
+            <div class="chat-message">Olá! Eu sou Jordan, seu consultor de investimentos. Vamos começar com algumas informações básicas. Primeiro, qual seu nome?</div>
+        </div>
+    </div>
+    <div class="chat-input-container">
+        <form id="chat-form" class="w-100 d-flex">
+            <input type="text" class="form-control" id="chat-input" required autocomplete="off">
+            <button type="submit" class="btn btn-primary">Enviar</button>
+        </form>
+    </div>
 
-    function addMessage(role, message) {
-        const chatBox = document.createElement('div');
-        chatBox.className = `chat-box ${role}`;
-        const chatMessage = document.createElement('div');
-        chatMessage.className = 'chat-message';
-        chatMessage.innerText = message;
-        chatBox.appendChild(chatMessage);
-        chatContainer.appendChild(chatBox);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        chatInput.focus();
-    }
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const chatContainer = document.getElementById('chat-container');
+            const chatForm = document.getElementById('chat-form');
+            const chatInput = document.getElementById('chat-input');
 
-    function sendUserData() {
-        fetch('/gerar-recomendacao', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(userData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            setTimeout(() => addMessage('assistant', data.recomendacao), 1000);
-            chatForm.classList.add('d-none');
-        })
-        .catch(error => console.error('Error:', error));
-    }
+            let step = 0;
+            const userData = {};
 
-    chatInput.focus();
-});
-</script>
-{% endblock %}
+            const basicQuestions = [
+                "Qual é a sua idade?",
+                "Em qual estado você mora?",
+                "Qual é a sua profissão?",
+                "Qual é o seu estado civil?",
+                "Você tem filhos? Se sim, quantos?"
+            ];
+
+            const profileQuestions = [
+                "Qual é o seu objetivo financeiro?",
+                "Qual é a sua tolerância ao risco?",
+                "Quais são seus investimentos atuais?",
+                "Qual é a sua renda mensal?",
+                "Quais são suas despesas mensais?",
+                "Qual é o seu horizonte de tempo (em anos)?",
+                "Qual é a sua experiência com investimentos?"
+            ];
+
+            const allQuestions = [
+                "Qual é o seu nome?",
+                ...basicQuestions,
+                ...profileQuestions
+            ];
+
+            const fields = [
+                "nome",
+                "idade",
+                "estado",
+                "profissao",
+                "estado_civil",
+                "filhos",
+                "objetivo",
+                "tolerancia_risco",
+                "investimentos",
+                "renda_mensal",
+                "despesas_mensais",
+                "horizonte_tempo",
+                "experiencia_investimentos"
+            ];
+
+            const dynamicResponses = [
+                "Interessante... você já considerou investir em bitcoin? Brincadeira à parte, vamos prosseguir.",
+                "Ótimo, estamos indo bem. Próxima pergunta:",
+                "Isso é útil. Agora me diga...",
+                "Legal, estamos quase lá. Próxima:",
+                "Os maiores investidores também tem ",
+                "Boa! Continuando...",
+                "Bom saber. Estamos quase terminando.",
+                "Entendi, isso ajuda. Próxima...",
+                "Beleza, outra pergunta...",
+                "Ótimo."
+            ];
+
+            chatForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const userMessage = chatInput.value.trim();
+                addMessage('user', userMessage);
+
+                userData[fields[step]] = userMessage;
+                chatInput.value = '';
+                step++;
+                if (step < allQuestions.length) {
+                    const responseIndex = Math.floor(Math.random() * dynamicResponses.length);
+                    setTimeout(() => addMessage('assistant', dynamicResponses[responseIndex]), 500);
+                    setTimeout(() => addMessage('assistant', allQuestions[step]), 1000);
+                } else {
+                    setTimeout(sendUserData, 1000);
+                }
+            });
+
+            function addMessage(role, message) {
+                const chatBox = document.createElement('div');
+                chatBox.className = `chat-box ${role}`;
+                const chatMessage = document.createElement('div');
+                chatMessage.className = 'chat-message';
+                chatMessage.innerText = message;
+                chatBox.appendChild(chatMessage);
+                chatContainer.appendChild(chatBox);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                chatInput.focus();
+            }
+
+            function sendUserData() {
+                fetch('/gerar-relatorio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    setTimeout(() => addMessage('assistant', data.relatorio), 1000);
+                    chatForm.classList.add('d-none');
+                })
+                .catch(error => console.error('Error:', error));
+            }
+
+            chatInput.focus();
+        });
+    </script>
+</body>
+</html>
