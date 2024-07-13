@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form method="post" action="/gerar-recomendacao">
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome" name="nome" required><br>
+
+    <label for="idade">Idade:</label>
+    <input type="number" id="idade" name="idade" required><br>
+
+    <label for="objetivo">Objetivo Financeiro:</label>
+    <input type="text" id="objetivo" name="objetivo" required><br>
+
+    <label for="tolerancia_risco">Tolerância ao Risco:</label>
+    <input type="text" id="tolerancia_risco" name="tolerancia_risco" required><br>
+
+    <label for="investimentos">Investimentos Atuais:</label>
+    <input type="text" id="investimentos" name="investimentos" required><br>
+
+    <label for="renda_mensal">Renda Mensal:</label>
+    <input type="number" id="renda_mensal" name="renda_mensal" required><br>
+
+    <label for="despesas_mensais">Despesas Mensais:</label>
+    <input type="number" id="despesas_mensais" name="despesas_mensais" required><br>
+
+    <button type="submit">Obter Recomendação</button>
+</form>
+{% endblock %}
