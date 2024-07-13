@@ -6,20 +6,27 @@ def gerar_recomendacao_investimento(dados_usuario):
         logging.info("Gerando recomendação de investimento para: %s", dados_usuario)
 
         prompt = (
-            f"Usuário: {dados_usuario['nome']}\n"
+            f"Nome do Usuário: {dados_usuario['nome']}\n"
             f"Idade: {dados_usuario['idade']}\n"
-            f"Objetivo financeiro: {dados_usuario['objetivo']}\n"
-            f"Tolerância ao risco: {dados_usuario['tolerancia_risco']}\n"
-            f"Investimentos atuais: {dados_usuario['investimentos']}\n"
-            f"Renda mensal: {dados_usuario['renda_mensal']}\n"
-            f"Despesas mensais: {dados_usuario['despesas_mensais']}\n"
-            "Crie um plano de investimento personalizado para este usuário."
+            f"Objetivo Financeiro: {dados_usuario['objetivo']}\n"
+            f"Tolerância ao Risco: {dados_usuario['tolerancia_risco']}\n"
+            f"Investimentos Atuais: {dados_usuario['investimentos']}\n"
+            f"Renda Mensal: {dados_usuario['renda_mensal']}\n"
+            f"Despesas Mensais: {dados_usuario['despesas_mensais']}\n"
+            f"Horizonte de Tempo: {dados_usuario['horizonte_tempo']} anos\n"
+            f"Experiência com Investimentos: {dados_usuario['experiencia_investimentos']}\n\n"
+            "Baseado nas informações fornecidas, por favor, forneça uma recomendação detalhada e personalizada de investimento que inclua:\n"
+            "- Sugestões de alocação de ativos (ações, títulos, fundos imobiliários, etc.)\n"
+            "- Estratégias de investimento adequadas ao perfil e objetivos do usuário\n"
+            "- Considerações sobre risco e retorno\n"
+            "- Qualquer outra recomendação relevante para ajudar o usuário a alcançar seus objetivos financeiros.\n\n"
+            "Resposta:"
         )
 
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Você é um assistente financeiro."},
+                {"role": "system", "content": "Você é um consultor financeiro experiente e prestativo."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=500

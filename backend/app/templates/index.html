@@ -14,13 +14,26 @@
     </div>
     <div class="form-group">
         <label for="objetivo">Objetivo Financeiro:</label>
-        <input type="text" class="form-control" id="objetivo" name="objetivo" required>
-        <div class="invalid-feedback">Por favor, insira seu objetivo financeiro.</div>
+        <select class="form-control" id="objetivo" name="objetivo" required>
+            <option value="" disabled selected>Selecione seu objetivo</option>
+            <option value="crescimento de capital">Crescimento de Capital</option>
+            <option value="reserva de emergência">Reserva de Emergência</option>
+            <option value="renda passiva">Renda Passiva</option>
+            <option value="aposentadoria">Aposentadoria</option>
+            <option value="educação">Educação</option>
+            <option value="outro">Outro</option>
+        </select>
+        <div class="invalid-feedback">Por favor, selecione seu objetivo financeiro.</div>
     </div>
     <div class="form-group">
         <label for="tolerancia_risco">Tolerância ao Risco:</label>
-        <input type="text" class="form-control" id="tolerancia_risco" name="tolerancia_risco" required>
-        <div class="invalid-feedback">Por favor, insira sua tolerância ao risco.</div>
+        <select class="form-control" id="tolerancia_risco" name="tolerancia_risco" required>
+            <option value="" disabled selected>Selecione sua tolerância ao risco</option>
+            <option value="baixa">Baixa</option>
+            <option value="moderada">Moderada</option>
+            <option value="alta">Alta</option>
+        </select>
+        <div class="invalid-feedback">Por favor, selecione sua tolerância ao risco.</div>
     </div>
     <div class="form-group">
         <label for="investimentos">Investimentos Atuais:</label>
@@ -36,6 +49,21 @@
         <label for="despesas_mensais">Despesas Mensais:</label>
         <input type="number" class="form-control" id="despesas_mensais" name="despesas_mensais" required>
         <div class="invalid-feedback">Por favor, insira suas despesas mensais.</div>
+    </div>
+    <div class="form-group">
+        <label for="horizonte_tempo">Horizonte de Tempo (anos):</label>
+        <input type="number" class="form-control" id="horizonte_tempo" name="horizonte_tempo" required>
+        <div class="invalid-feedback">Por favor, insira seu horizonte de tempo.</div>
+    </div>
+    <div class="form-group">
+        <label for="experiencia_investimentos">Experiência com Investimentos:</label>
+        <select class="form-control" id="experiencia_investimentos" name="experiencia_investimentos" required>
+            <option value="" disabled selected>Selecione seu nível de experiência</option>
+            <option value="iniciante">Iniciante</option>
+            <option value="intermediário">Intermediário</option>
+            <option value="avançado">Avançado</option>
+        </select>
+        <div class="invalid-feedback">Por favor, selecione seu nível de experiência.</div>
     </div>
     <button type="submit" class="btn btn-primary">Obter Recomendação</button>
 </form>
