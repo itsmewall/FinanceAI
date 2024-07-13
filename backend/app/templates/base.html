@@ -6,12 +6,61 @@
     <title>Consultor de Investimentos Pessoais</title>
     <!-- Bootstrap CSS -->
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .chat-box {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            margin-bottom: 10px;
+            max-width: 600px;
+            word-wrap: break-word;
+        }
+        .chat-box.user {
+            align-self: flex-end;
+            text-align: right;
+        }
+        .chat-box.user .chat-message {
+            background-color: #d1e7dd;
+        }
+        .chat-box.assistant {
+            align-self: flex-start;
+            text-align: left;
+        }
+        .chat-box.assistant .chat-message {
+            background-color: #fff;
+        }
+        .chat-message {
+            display: inline-block;
+            padding: 10px 15px;
+            border-radius: 5px;
+        }
+        .chat-input-container {
+            border-top: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f9f9f9;
+            position: sticky;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
     <header class="bg-primary text-white text-center py-3">
         <h1>Consultor de Investimentos Pessoais</h1>
     </header>
-    <main class="container mt-4">
+    <main class="container mt-4 flex-grow-1 d-flex flex-column">
         {% block content %}
         {% endblock %}
     </main>
