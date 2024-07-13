@@ -1,1 +1,15 @@
-/venv
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+venv/
+
+# Environment Variables
+.env
+
+# VS Code
+.vscode/
+
+# Other
+.DS_Store
