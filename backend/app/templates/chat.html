@@ -54,6 +54,11 @@
         .chat-input-container button {
             min-width: 100px;
         }
+        #go-home-btn {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -68,12 +73,16 @@
             <button type="submit" class="btn btn-primary">Enviar</button>
         </form>
     </div>
+    <div id="go-home-btn">
+        <a href="/recomendacoes" class="btn btn-success">Ver Ações Recomendadas</a>
+    </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const chatContainer = document.getElementById('chat-container');
             const chatForm = document.getElementById('chat-form');
             const chatInput = document.getElementById('chat-input');
+            const goHomeBtn = document.getElementById('go-home-btn');
 
             let step = 0;
             const userData = {};
@@ -170,8 +179,10 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    localStorage.setItem('dadosUsuario', JSON.stringify(userData));
                     setTimeout(() => addMessage('assistant', data.relatorio), 1000);
                     chatForm.classList.add('d-none');
+                    goHomeBtn.style.display = 'block';
                 })
                 .catch(error => console.error('Error:', error));
             }

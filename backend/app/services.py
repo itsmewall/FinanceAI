@@ -1,6 +1,12 @@
 import openai
 import logging
 from random import randint
+import yfinance as yf
+
+def obter_dados_acao(ticker):
+    stock = yf.Ticker(ticker)
+    data = stock.history(period="1d")
+    return data
 
 def gerar_relatorio_investidor(dados_usuario):
     try:
@@ -10,6 +16,7 @@ def gerar_relatorio_investidor(dados_usuario):
         idade = int(dados_usuario.get('idade', 0))
         profissao = dados_usuario.get('profissao', '').lower()
         objetivo = dados_usuario.get('objetivo', '').lower()
+        investimentos = dados_usuario.get('investimentos', '')
 
         recomendacoes = []
 
@@ -32,10 +39,19 @@ def gerar_relatorio_investidor(dados_usuario):
         # Recomendações baseadas no objetivo financeiro
         if 'aposentadoria' in objetivo:
             recomendacoes.append("Para a aposentadoria, considere investir em um plano de previdência privada e em títulos de longo prazo.")
-        elif 'casa' in objetivo:
+        elif 'casa' in   objetivo:
             recomendacoes.append("Para comprar uma casa, investimentos de médio prazo como CDBs e LCIs são recomendados.")
         else:
             recomendacoes.append("Para outros objetivos, mantenha uma carteira diversificada para balancear risco e retorno.")
+
+        # Adicionando dados das ações ao relatório
+        if investimentos:
+            tickers = [ticker.strip() for ticker in investimentos.split(',')]
+            for ticker in tickers:
+                dados_acao = obter_dados_acao(ticker)
+                if not dados_acao.empty:
+                    preco_atual = dados_acao['Close'].iloc[-1]
+                    recomendacoes.append(f"Ação {ticker.upper()}: Preço Atual: ${preco_atual:.2f}")
 
         prompt = (
             f"Nome: {dados_usuario.get('nome', '')}\n"
@@ -95,3 +111,22 @@ def treinar_ia(casos):
     logging.info("Treinando a IA com casos: %s", casos)
     for caso in casos:
         gerar_relatorio_investidor(caso)
+
+def obter_acoes_recomendadas(dados_usuario):
+    try:
+        tickers = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN']
+        acoes = []
+        for ticker in tickers:
+            dados_acao = obter_dados_acao(ticker)
+            if not dados_acao.empty:
+                preco_atual = dados_acao['Close'].iloc[-1]
+                acoes.append({
+                    'nome': ticker,
+                    'ticker': ticker,
+                    'preco_atual': preco_atual,
+                    'descricao': f"Recomendação baseada no perfil de {dados_usuario['nome']}."
+                })
+        return acoes
+    except Exception as e:
+        logging.error(f"Erro ao obter ações recomendadas: {str(e)}")
+        raise e
