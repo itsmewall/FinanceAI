@@ -1,5 +1,5 @@
-from flask import Blueprint, request, render_template, jsonify
-from .services import gerar_relatorio_com_verificacao, obter_acoes_recomendadas, treinar_ia
+from flask import Blueprint, request, jsonify, render_template
+from .services import gerar_relatorio_com_verificacao, treinar_modelo_com_dados_financeiros, obter_acoes_recomendadas
 
 main_bp = Blueprint('main', __name__)
 
@@ -26,5 +26,6 @@ def obter_acoes():
 @main_bp.route('/treinar', methods=['POST'])
 def treinar():
     casos = request.json
-    treinar_ia(casos)
+    tickers = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN"]  # Adicionar mais tickers conforme necessário
+    treinar_modelo_com_dados_financeiros(tickers, casos)
     return jsonify({'status': 'Treinamento concluído com sucesso'})
