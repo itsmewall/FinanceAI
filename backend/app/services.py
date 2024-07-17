@@ -5,45 +5,35 @@ from sklearn.tree import DecisionTreeClassifier
 import pandas as pd
 import numpy as np
 import joblib
+import os
 
 logging.basicConfig(level=logging.INFO)
 
-modelo_treinado = None
+modelos_usuarios = {}
 
-def carregar_modelo():
-    global modelo_treinado
+def carregar_modelo_usuario(user_id):
+    global modelos_usuarios
     try:
-        modelo_treinado = joblib.load("modelo_investimento.pkl")
-        logging.info("Modelo de investimento carregado com sucesso.")
+        modelo_usuario = joblib.load(f"modelo_investimento_{user_id}.pkl")
+        modelos_usuarios[user_id] = modelo_usuario
+        logging.info(f"Modelo de investimento para o usuário {user_id} carregado com sucesso.")
     except FileNotFoundError:
-        modelo_treinado = None
-        logging.warning("Modelo de investimento não encontrado. Certifique-se de treinar o modelo antes de utilizá-lo.")
+        modelos_usuarios[user_id] = None
+        logging.warning(f"Modelo de investimento para o usuário {user_id} não encontrado.")
     except Exception as e:
-        modelo_treinado = None
-        logging.error(f"Erro ao carregar o modelo: {e}")
-
-carregar_modelo()
+        modelos_usuarios[user_id] = None
+        logging.error(f"Erro ao carregar o modelo do usuário {user_id}: {e}")
 
 def coletar_dados_financeiros(tickers, periodo="1y"):
     dados = []
-    
     for ticker in tickers:
         stock = yf.Ticker(ticker)
         hist = stock.history(period=periodo)
-        
         if hist.empty:
             continue
-        
-        # Calcular crescimento (CAGR) e risco (volatilidade)
         cagr = (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) ** (1 / (len(hist) / 252)) - 1
         volatilidade = hist['Close'].pct_change().std() * np.sqrt(252)
-        
-        dados.append({
-            "ticker": ticker,
-            "cagr": float(cagr),
-            "volatilidade": float(volatilidade)
-        })
-    
+        dados.append({"ticker": ticker, "cagr": float(cagr), "volatilidade": float(volatilidade)})
     return dados
 
 def obter_dados_acao(ticker):
@@ -53,37 +43,37 @@ def obter_dados_acao(ticker):
 
 def gerar_relatorio_investidor(dados_usuario):
     try:
+        user_id = dados_usuario.get('user_id')
         idade = int(dados_usuario.get('idade', 0))
         profissao = dados_usuario.get('profissao', '').lower()
         objetivo = dados_usuario.get('objetivo', '').lower()
         tolerancia_risco = dados_usuario.get('tolerancia_risco', '').lower()
 
+        perfil_df = pd.DataFrame([{
+            'idade': idade,
+            'profissao': profissao,
+            'objetivo': objetivo,
+            'tolerancia_risco': tolerancia_risco
+        }])
+        
         profissao_code = pd.Series([profissao]).astype('category').cat.codes[0]
         objetivo_code = pd.Series([objetivo]).astype('category').cat.codes[0]
         tolerancia_risco_code = pd.Series([tolerancia_risco]).astype('category').cat.codes[0]
 
-        perfil = np.array([[idade, profissao_code, objetivo_code, tolerancia_risco_code]])
+        perfil = pd.DataFrame([{
+            'idade': idade,
+            'profissao': profissao_code,
+            'objetivo': objetivo_code,
+            'tolerancia_risco': tolerancia_risco_code
+        }])
 
-        if modelo_treinado is None:
-            raise ValueError("O modelo de investimento não foi carregado corretamente.")
+        if user_id not in modelos_usuarios or modelos_usuarios[user_id] is None:
+            raise ValueError(f"O modelo de investimento para o usuário {user_id} não foi carregado corretamente.")
 
+        modelo_treinado = modelos_usuarios[user_id]
         recomendacao = modelo_treinado.predict(perfil)[0]
 
-        # Adicione aqui o código correto para mapear a recomendação aos tickers
-        categorias = [
-            ('AAPL', 'alta_crescimento_alto_risco'),
-            ('GOOGL', 'alta_crescimento_alto_risco'),
-            ('MSFT', 'alta_crescimento_baixo_risco'),
-            ('TSLA', 'alta_crescimento_alto_risco'),
-            ('AMZN', 'alta_crescimento_alto_risco'),
-            ('FB', 'alta_crescimento_alto_risco'),
-            ('NFLX', 'alta_crescimento_alto_risco'),
-            ('NVDA', 'alta_crescimento_alto_risco'),
-            ('BABA', 'alta_crescimento_alto_risco'),
-            ('V', 'alta_crescimento_baixo_risco')
-        ]
-
-        tickers = [ticker for ticker, categoria in categorias if categoria == recomendacao]
+        tickers = [ticker for ticker, categoria in tickers_para_categorias.items() if categoria == recomendacao]
         recomendacoes = []
 
         for ticker in tickers:
@@ -115,7 +105,6 @@ def gerar_relatorio_investidor(dados_usuario):
 
         relatorio = response.choices[0].message['content'].strip()
 
-        # Adicionando recomendações personalizadas ao relatório
         for recomendacao in recomendacoes:
             relatorio += f"\n- {recomendacao}"
 
@@ -137,11 +126,17 @@ def gerar_relatorio_com_verificacao(dados_usuario):
         return mensagem
     return gerar_relatorio_investidor(dados_usuario)
 
-def treinar_modelo_com_dados_financeiros(tickers, casos):
+def treinar_modelo_com_dados_financeiros(user_id, tickers, casos):
     dados_financeiros = coletar_dados_financeiros(tickers)
+    df = pd.DataFrame(casos)
+    df['profissao'] = df['profissao'].astype('category').cat.codes
+    df['objetivo'] = df['objetivo'].astype('category').cat.codes
+    df['tolerancia_risco'] = df['tolerancia_risco'].astype('category').cat.codes
+
+    X = df[['idade', 'profissao', 'objetivo', 'tolerancia_risco']]
     
     categorias = []
-    for row in dados_financeiros:
+    for _, row in pd.DataFrame(dados_financeiros).iterrows():
         if row['cagr'] > 0.2 and row['volatilidade'] < 0.3:
             categoria = 'alta_crescimento_baixo_risco'
         elif row['cagr'] > 0.2:
@@ -151,58 +146,69 @@ def treinar_modelo_com_dados_financeiros(tickers, casos):
         else:
             categoria = 'baixo_crescimento_alto_risco'
         categorias.append((row['ticker'], categoria))
-    
-    df = pd.DataFrame(casos)
-    df['profissao'] = df['profissao'].astype('category').cat.codes
-    df['objetivo'] = df['objetivo'].astype('category').cat.codes
-    df['tolerancia_risco'] = df['tolerancia_risco'].astype('category').cat.codes
-    
-    X = df[['idade', 'profissao', 'objetivo', 'tolerancia_risco']]
-    
-    tickers_para_categorias = {ticker: categoria for ticker, categoria in categorias}
-    categorias_filtradas = [tickers_para_categorias[ticker] for ticker in df['recomendacao'] if ticker in tickers_para_categorias]
 
-    if len(X) != len(categorias_filtradas):
+    global tickers_para_categorias
+    tickers_para_categorias = {ticker: categoria for ticker, categoria in categorias}
+    categorias_filtradas = [tickers_para_categorias.get(ticker, None) for ticker in df['recomendacao']]
+    
+    valid_indices = [i for i, categoria in enumerate(categorias_filtradas) if categoria is not None]
+    X = X.iloc[valid_indices]
+    y = [categorias_filtradas[i] for i in valid_indices]
+
+    if len(X) != len(y):
         raise ValueError("Número de amostras e rótulos não correspondem. Verifique os dados de entrada.")
 
-    y = categorias_filtradas
-    
     modelo = DecisionTreeClassifier()
     modelo.fit(X, y)
-    joblib.dump(modelo, "modelo_investimento.pkl")
-    logging.info("Modelo treinado com sucesso.")
-    carregar_modelo()
+    joblib.dump(modelo, f"modelo_investimento_{user_id}.pkl")
+    logging.info(f"Modelo de investimento para o usuário {user_id} treinado com sucesso.")
+    carregar_modelo_usuario(user_id)
 
 def obter_acoes_recomendadas(dados_usuario):
     try:
+        user_id = dados_usuario.get('user_id')
         idade = int(dados_usuario.get('idade', 0))
         profissao = dados_usuario.get('profissao', '').lower()
         objetivo = dados_usuario.get('objetivo', '').lower()
         tolerancia_risco = dados_usuario.get('tolerancia_risco', '').lower()
+
+        perfil = pd.DataFrame([{
+            'idade': idade,
+            'profissao': profissao,
+            'objetivo': objetivo,
+            'tolerancia_risco': tolerancia_risco
+        }])
         
-        if modelo_treinado:
-            profissao_code = pd.Series([profissao]).astype('category').cat.codes[0]
-            objetivo_code = pd.Series([objetivo]).astype('category').cat.codes[0]
-            tolerancia_risco_code = pd.Series([tolerancia_risco]).astype('category').cat.codes[0]
-            
-            perfil = np.array([[idade, profissao_code, objetivo_code, tolerancia_risco_code]])
-            recomendacao = modelo_treinado.predict(perfil)
-            acoes = []
-            if recomendacao:
-                tickers = recomendacao[0].split(',')
-                for ticker in tickers:
-                    dados_acao = obter_dados_acao(ticker)
-                    if not dados_acao.empty:
-                        preco_atual = dados_acao['Close'].iloc[-1]
-                        acoes.append({
-                            'nome': ticker,
-                            'ticker': ticker,
-                            'preco_atual': preco_atual,
-                            'descricao': f"Recomendação baseada no perfil de {dados_usuario['nome']}."
-                        })
-            return acoes
-        else:
-            return []
+        profissao_code = pd.Series([profissao]).astype('category').cat.codes[0]
+        objetivo_code = pd.Series([objetivo]).astype('category').cat.codes[0]
+        tolerancia_risco_code = pd.Series([tolerancia_risco]).astype('category').cat.codes[0]
+
+        perfil = pd.DataFrame([{
+            'idade': idade,
+            'profissao': profissao_code,
+            'objetivo': objetivo_code,
+            'tolerancia_risco': tolerancia_risco_code
+        }])
+
+        if user_id not in modelos_usuarios or modelos_usuarios[user_id] is None:
+            raise ValueError(f"O modelo de investimento para o usuário {user_id} não foi carregado corretamente.")
+
+        modelo_treinado = modelos_usuarios[user_id]
+        recomendacao = modelo_treinado.predict(perfil)[0]
+        acoes = []
+        if recomendacao:
+            tickers = [ticker for ticker, categoria in tickers_para_categorias.items() if categoria == recomendacao]
+            for ticker in tickers:
+                dados_acao = obter_dados_acao(ticker)
+                if not dados_acao.empty:
+                    preco_atual = dados_acao['Close'].iloc[-1]
+                    acoes.append({
+                        'nome': ticker,
+                        'ticker': ticker,
+                        'preco_atual': preco_atual,
+                        'descricao': f"Recomendação baseada no perfil de {dados_usuario['nome']}."
+                    })
+        return acoes
     except Exception as e:
         logging.error(f"Erro ao obter ações recomendadas: {str(e)}")
         raise e

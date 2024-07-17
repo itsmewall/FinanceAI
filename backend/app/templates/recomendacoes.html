@@ -3,54 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recomendações de Ações</title>
+    <title>Ações Recomendadas</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f8f9fa;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            margin-top: 50px;
-        }
-        .card {
-            margin-bottom: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .card-header {
-            background-color: #007bff;
-            color: white;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
-        }
-        .card-body {
-            padding: 20px;
-        }
-        .card-footer {
-            background-color: #f1f1f1;
-            border-bottom-left-radius: 10px;
-            border-bottom-right-radius: 10px;
-        }
-        .card-footer a {
-            color: #007bff;
-            text-decoration: none;
-        }
-    </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="text-center">Recomendações de Ações</h1>
-        <div id="acoes-container" class="row"></div>
+    <div class="container mt-5">
+        <h1>Ações Recomendadas</h1>
+        <div id="acoes-recomendadas" class="mt-3">
+            <!-- Ações recomendadas serão listadas aqui -->
+        </div>
+        <a href="/" class="btn btn-primary mt-3">Voltar</a>
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            const acoesContainer = document.getElementById('acoes-container');
             const dadosUsuario = JSON.parse(localStorage.getItem('dadosUsuario'));
-
             fetch('/obter-acoes', {
                 method: 'POST',
                 headers: {
@@ -60,25 +27,17 @@
             })
             .then(response => response.json())
             .then(data => {
-                data.acoes.forEach(acao => {
-                    const card = document.createElement('div');
-                    card.className = 'col-md-4';
-                    card.innerHTML = `
-                        <div class="card">
-                            <div class="card-header">
-                                <h5>${acao.nome} (${acao.ticker})</h5>
-                            </div>
-                            <div class="card-body">
-                                <p>Preço Atual: $${acao.preco_atual.toFixed(2)}</p>
-                                <p>${acao.descricao}</p>
-                            </div>
-                            <div class="card-footer text-center">
-                                <a href="https://finance.yahoo.com/quote/${acao.ticker}" target="_blank">Ver mais detalhes</a>
-                            </div>
-                        </div>
-                    `;
-                    acoesContainer.appendChild(card);
-                });
+                const acoesRecomendadasDiv = document.getElementById('acoes-recomendadas');
+                if (data.acoes.length === 0) {
+                    acoesRecomendadasDiv.innerHTML = '<p>Nenhuma ação recomendada no momento.</p>';
+                } else {
+                    data.acoes.forEach(acao => {
+                        const acaoDiv = document.createElement('div');
+                        acaoDiv.className = 'alert alert-info';
+                        acaoDiv.innerHTML = `<strong>${acao.nome}</strong> (${acao.ticker}): Preço Atual: $${acao.preco_atual.toFixed(2)}`;
+                        acoesRecomendadasDiv.appendChild(acaoDiv);
+                    });
+                }
             })
             .catch(error => console.error('Error:', error));
         });
