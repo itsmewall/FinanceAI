@@ -94,6 +94,12 @@
             const perfilContainer = document.getElementById('perfil-container');
             const perfilInvestidor = document.getElementById('perfil-investidor');
 
+            const userId = localStorage.getItem('user_id');
+            if (!userId) {
+                window.location.href = '/';
+                return;
+            }
+
             let step = 0;
             const userData = {};
 
@@ -163,6 +169,7 @@
                     setTimeout(() => addMessage('assistant', dynamicResponses[responseIndex]), 500);
                     setTimeout(() => addMessage('assistant', allQuestions[step]), 1000);
                 } else {
+                    userData['user_id'] = userId;
                     setTimeout(sendUserData, 1000);
                 }
             });
@@ -180,7 +187,7 @@
             }
 
             function sendUserData() {
-                fetch('/gerar-relatorio', {
+                fetch('/completar-perfil', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

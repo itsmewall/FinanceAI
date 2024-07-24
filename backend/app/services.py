@@ -5,6 +5,7 @@ import joblib
 from sklearn.tree import DecisionTreeClassifier
 import os
 import json
+from .auth import registrar_usuario, autenticar_usuario, carregar_dados_usuario, salvar_dados_usuario
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,7 +15,7 @@ tickers_para_categorias = {}
 def carregar_modelo_usuario(user_id):
     global modelos_usuarios
     try:
-        modelo_usuario = joblib.load(f"modelo_investimento_{user_id}.pkl")
+        modelo_usuario = joblib.load(f"usuarios/modelo_investimento_{user_id}.pkl")
         modelos_usuarios[user_id] = modelo_usuario
         logging.info(f"Modelo de investimento para o usuário {user_id} carregado com sucesso.")
     except FileNotFoundError:
@@ -35,6 +36,11 @@ def carregar_analises_csv(arquivo_csv):
     except Exception as e:
         logging.error(f"Erro ao carregar análises do arquivo {arquivo_csv}: {e}")
         return pd.DataFrame()
+
+def calcular_cagr_volatilidade(df):
+    df['CAGR'] = (df['Close'].pct_change().add(1).cumprod()**(1/df.shape[0])).subtract(1)
+    df['Volatilidade'] = df['Close'].pct_change().rolling(window=252).std() * (252**0.5)
+    return df
 
 def gerar_relatorio_investidor(dados_usuario, df_analises):
     try:
@@ -137,17 +143,24 @@ def treinar_modelo_com_dados_financeiros(user_id, casos, df_analises):
 
     X = df[['idade', 'profissao', 'objetivo', 'tolerancia_risco']]
     
+    if 'CAGR' not in df_analises.columns or 'Volatilidade' not in df_analises.columns:
+        df_analises = calcular_cagr_volatilidade(df_analises)
+
     categorias = []
     for _, row in df_analises.iterrows():
-        if row['CAGR'] > 0.2 and row['Volatilidade'] < 0.3:
-            categoria = 'alta_crescimento_baixo_risco'
-        elif row['CAGR'] > 0.2:
-            categoria = 'alta_crescimento_alto_risco'
-        elif row['Volatilidade'] < 0.3:
-            categoria = 'baixo_crescimento_baixo_risco'
-        else:
-            categoria = 'baixo_crescimento_alto_risco'
-        categorias.append((row['Ticker'], categoria))
+        try:
+            if row['CAGR'] > 0.2 and row['Volatilidade'] < 0.3:
+                categoria = 'alta_crescimento_baixo_risco'
+            elif row['CAGR'] > 0.2:
+                categoria = 'alta_crescimento_alto_risco'
+            elif row['Volatilidade'] < 0.3:
+                categoria = 'baixo_crescimento_baixo_risco'
+            else:
+                categoria = 'baixo_crescimento_alto_risco'
+            categorias.append((row['Ticker'], categoria))
+        except KeyError as e:
+            logging.error(f"Erro ao processar linha: {e}")
+            continue
 
     global tickers_para_categorias
     tickers_para_categorias = {ticker: categoria for ticker, categoria in categorias}
@@ -162,7 +175,7 @@ def treinar_modelo_com_dados_financeiros(user_id, casos, df_analises):
 
     modelo = DecisionTreeClassifier()
     modelo.fit(X, y)
-    joblib.dump(modelo, f"modelo_investimento_{user_id}.pkl")
+    joblib.dump(modelo, f"usuarios/modelo_investimento_{user_id}.pkl")
     logging.info(f"Modelo de investimento para o usuário {user_id} treinado com sucesso.")
     carregar_modelo_usuario(user_id)
 
@@ -214,40 +227,3 @@ def obter_acoes_recomendadas(dados_usuario, df_analises):
     except Exception as e:
         logging.error(f"Erro ao obter ações recomendadas: {str(e)}")
         raise e
-
-def salvar_dados_usuario(dados_usuario):
-    user_id = dados_usuario.get('user_id')
-    caminho_arquivo = f"usuarios/{user_id}.json"
-    os.makedirs(os.path.dirname(caminho_arquivo), existindo_ok=True)
-    with open(caminho_arquivo, 'w') as f:
-        json.dump(dados_usuario, f)
-    logging.info(f"Dados do usuário {user_id} salvos com sucesso.")
-
-# Exemplo de uso
-if __name__ == "__main__":
-    # Carregar análises do CSV
-    arquivo_csv = 'indicadores_financeiros_atualizados.csv'
-    df_analises = carregar_analises_csv(arquivo_csv)
-
-    # Exemplo de dados do usuário
-    dados_usuario = {
-        'user_id': '12345',
-        'nome': 'João',
-        'idade': 35,
-        'profissao': 'engenheiro',
-        'objetivo': 'aposentadoria',
-        'tolerancia_risco': 'alta'
-    }
-
-    # Salvar dados do usuário
-    salvar_dados_usuario(dados_usuario)
-
-    # Gerar relatório com verificação
-    relatorio, perfil_investidor = gerar_relatorio_com_verificacao(dados_usuario, df_analises)
-    print(relatorio)
-    print(f"Perfil de Investidor: {perfil_investidor}")
-
-    # Obter ações recomendadas
-    acoes_recomendadas = obter_acoes_recomendadas(dados_usuario, df_analises)
-    for acao in acoes_recomendadas:
-        print(acao)
