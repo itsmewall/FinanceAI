@@ -59,6 +59,11 @@
             margin-top: 20px;
             text-align: center;
         }
+        #perfil-container {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -73,8 +78,11 @@
             <button type="submit" class="btn btn-primary">Enviar</button>
         </form>
     </div>
-    <div id="go-home-btn">
-        <a href="/recomendacoes" class="btn btn-success">Ver Ações Recomendadas</a>
+    <div id="perfil-container">
+        <h3>Perfil de Investidor: <span id="perfil-investidor"></span></h3>
+        <div id="go-home-btn">
+            <a href="/recomendacoes" class="btn btn-success">Ver Ações Recomendadas</a>
+        </div>
     </div>
 
     <script>
@@ -83,6 +91,8 @@
             const chatForm = document.getElementById('chat-form');
             const chatInput = document.getElementById('chat-input');
             const goHomeBtn = document.getElementById('go-home-btn');
+            const perfilContainer = document.getElementById('perfil-container');
+            const perfilInvestidor = document.getElementById('perfil-investidor');
 
             let step = 0;
             const userData = {};
@@ -182,6 +192,8 @@
                     localStorage.setItem('dadosUsuario', JSON.stringify(userData));
                     setTimeout(() => addMessage('assistant', data.relatorio), 1000);
                     chatForm.classList.add('d-none');
+                    perfilInvestidor.innerText = data.perfil_investidor;
+                    perfilContainer.style.display = 'block';
                     goHomeBtn.style.display = 'block';
                 })
                 .catch(error => console.error('Error:', error));

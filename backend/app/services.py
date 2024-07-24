@@ -1,15 +1,15 @@
 import openai
 import logging
-import yfinance as yf
-from sklearn.tree import DecisionTreeClassifier
 import pandas as pd
-import numpy as np
 import joblib
+from sklearn.tree import DecisionTreeClassifier
 import os
+import json
 
 logging.basicConfig(level=logging.INFO)
 
 modelos_usuarios = {}
+tickers_para_categorias = {}
 
 def carregar_modelo_usuario(user_id):
     global modelos_usuarios
@@ -24,24 +24,19 @@ def carregar_modelo_usuario(user_id):
         modelos_usuarios[user_id] = None
         logging.error(f"Erro ao carregar o modelo do usuário {user_id}: {e}")
 
-def coletar_dados_financeiros(tickers, periodo="1y"):
-    dados = []
-    for ticker in tickers:
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period=periodo)
-        if hist.empty:
-            continue
-        cagr = (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) ** (1 / (len(hist) / 252)) - 1
-        volatilidade = hist['Close'].pct_change().std() * np.sqrt(252)
-        dados.append({"ticker": ticker, "cagr": float(cagr), "volatilidade": float(volatilidade)})
-    return dados
+def carregar_analises_csv(arquivo_csv):
+    try:
+        df_analises = pd.read_csv(arquivo_csv)
+        logging.info(f"Análises carregadas do arquivo {arquivo_csv} com sucesso.")
+        return df_analises
+    except FileNotFoundError:
+        logging.error(f"Arquivo {arquivo_csv} não encontrado.")
+        return pd.DataFrame()
+    except Exception as e:
+        logging.error(f"Erro ao carregar análises do arquivo {arquivo_csv}: {e}")
+        return pd.DataFrame()
 
-def obter_dados_acao(ticker):
-    stock = yf.Ticker(ticker)
-    data = stock.history(period="1d")
-    return data
-
-def gerar_relatorio_investidor(dados_usuario):
+def gerar_relatorio_investidor(dados_usuario, df_analises):
     try:
         user_id = dados_usuario.get('user_id')
         idade = int(dados_usuario.get('idade', 0))
@@ -77,7 +72,7 @@ def gerar_relatorio_investidor(dados_usuario):
         recomendacoes = []
 
         for ticker in tickers:
-            dados_acao = obter_dados_acao(ticker)
+            dados_acao = df_analises[df_analises['Ticker'] == ticker]
             if not dados_acao.empty:
                 preco_atual = dados_acao['Close'].iloc[-1]
                 recomendacoes.append(f"Ação {ticker.upper()}: Preço Atual: ${preco_atual:.2f}")
@@ -108,8 +103,16 @@ def gerar_relatorio_investidor(dados_usuario):
         for recomendacao in recomendacoes:
             relatorio += f"\n- {recomendacao}"
 
+        # Classificação do perfil de investidor
+        if tolerancia_risco == 'alta' and idade < 40:
+            perfil_investidor = 'Arrojado'
+        elif tolerancia_risco == 'média' and 40 <= idade < 60:
+            perfil_investidor = 'Moderado'
+        else:
+            perfil_investidor = 'Conservador'
+
         logging.info("Relatório gerado com sucesso: %s", relatorio)
-        return relatorio
+        return relatorio, perfil_investidor
     except Exception as e:
         logging.error(f"Erro ao gerar relatório de investimento: {str(e)}")
         raise e
@@ -120,14 +123,13 @@ def verificar_consistencia_respostas(dados_usuario):
             return False, f"O campo '{key}' está vazio. Por favor, preencha todas as informações."
     return True, ""
 
-def gerar_relatorio_com_verificacao(dados_usuario):
+def gerar_relatorio_com_verificacao(dados_usuario, df_analises):
     consistencia, mensagem = verificar_consistencia_respostas(dados_usuario)
     if not consistencia:
         return mensagem
-    return gerar_relatorio_investidor(dados_usuario)
+    return gerar_relatorio_investidor(dados_usuario, df_analises)
 
-def treinar_modelo_com_dados_financeiros(user_id, tickers, casos):
-    dados_financeiros = coletar_dados_financeiros(tickers)
+def treinar_modelo_com_dados_financeiros(user_id, casos, df_analises):
     df = pd.DataFrame(casos)
     df['profissao'] = df['profissao'].astype('category').cat.codes
     df['objetivo'] = df['objetivo'].astype('category').cat.codes
@@ -136,16 +138,16 @@ def treinar_modelo_com_dados_financeiros(user_id, tickers, casos):
     X = df[['idade', 'profissao', 'objetivo', 'tolerancia_risco']]
     
     categorias = []
-    for _, row in pd.DataFrame(dados_financeiros).iterrows():
-        if row['cagr'] > 0.2 and row['volatilidade'] < 0.3:
+    for _, row in df_analises.iterrows():
+        if row['CAGR'] > 0.2 and row['Volatilidade'] < 0.3:
             categoria = 'alta_crescimento_baixo_risco'
-        elif row['cagr'] > 0.2:
+        elif row['CAGR'] > 0.2:
             categoria = 'alta_crescimento_alto_risco'
-        elif row['volatilidade'] < 0.3:
+        elif row['Volatilidade'] < 0.3:
             categoria = 'baixo_crescimento_baixo_risco'
         else:
             categoria = 'baixo_crescimento_alto_risco'
-        categorias.append((row['ticker'], categoria))
+        categorias.append((row['Ticker'], categoria))
 
     global tickers_para_categorias
     tickers_para_categorias = {ticker: categoria for ticker, categoria in categorias}
@@ -164,7 +166,7 @@ def treinar_modelo_com_dados_financeiros(user_id, tickers, casos):
     logging.info(f"Modelo de investimento para o usuário {user_id} treinado com sucesso.")
     carregar_modelo_usuario(user_id)
 
-def obter_acoes_recomendadas(dados_usuario):
+def obter_acoes_recomendadas(dados_usuario, df_analises):
     try:
         user_id = dados_usuario.get('user_id')
         idade = int(dados_usuario.get('idade', 0))
@@ -199,7 +201,7 @@ def obter_acoes_recomendadas(dados_usuario):
         if recomendacao:
             tickers = [ticker for ticker, categoria in tickers_para_categorias.items() if categoria == recomendacao]
             for ticker in tickers:
-                dados_acao = obter_dados_acao(ticker)
+                dados_acao = df_analises[df_analises['Ticker'] == ticker]
                 if not dados_acao.empty:
                     preco_atual = dados_acao['Close'].iloc[-1]
                     acoes.append({
@@ -212,3 +214,40 @@ def obter_acoes_recomendadas(dados_usuario):
     except Exception as e:
         logging.error(f"Erro ao obter ações recomendadas: {str(e)}")
         raise e
+
+def salvar_dados_usuario(dados_usuario):
+    user_id = dados_usuario.get('user_id')
+    caminho_arquivo = f"usuarios/{user_id}.json"
+    os.makedirs(os.path.dirname(caminho_arquivo), existindo_ok=True)
+    with open(caminho_arquivo, 'w') as f:
+        json.dump(dados_usuario, f)
+    logging.info(f"Dados do usuário {user_id} salvos com sucesso.")
+
+# Exemplo de uso
+if __name__ == "__main__":
+    # Carregar análises do CSV
+    arquivo_csv = 'indicadores_financeiros_atualizados.csv'
+    df_analises = carregar_analises_csv(arquivo_csv)
+
+    # Exemplo de dados do usuário
+    dados_usuario = {
+        'user_id': '12345',
+        'nome': 'João',
+        'idade': 35,
+        'profissao': 'engenheiro',
+        'objetivo': 'aposentadoria',
+        'tolerancia_risco': 'alta'
+    }
+
+    # Salvar dados do usuário
+    salvar_dados_usuario(dados_usuario)
+
+    # Gerar relatório com verificação
+    relatorio, perfil_investidor = gerar_relatorio_com_verificacao(dados_usuario, df_analises)
+    print(relatorio)
+    print(f"Perfil de Investidor: {perfil_investidor}")
+
+    # Obter ações recomendadas
+    acoes_recomendadas = obter_acoes_recomendadas(dados_usuario, df_analises)
+    for acao in acoes_recomendadas:
+        print(acao)

@@ -1,50 +1,38 @@
-import pandas as pd
-import joblib
-from sklearn.tree import DecisionTreeClassifier
+import json
 import logging
+import numpy as np
+from services import treinar_modelo_com_dados_financeiros, carregar_modelo_usuario
 
-def treinar_modelo(casos, dados_financeiros_path="dados_financeiros.csv"):
-    dados_financeiros = pd.read_csv(dados_financeiros_path)
+logging.basicConfig(level=logging.INFO)
 
-    df = pd.DataFrame(casos)
-    df['profissao'] = df['profissao'].astype('category').cat.codes
-    df['objetivo'] = df['objetivo'].astype('category').cat.codes
-    df['tolerancia_risco'] = df['tolerancia_risco'].astype('category').cat.codes
+# Carregar dados dos tickers e casos de treinamento
+with open('dados_financeiros.json', 'r') as f:
+    dados_financeiros = json.load(f)
 
-    X = df[['idade', 'profissao', 'objetivo', 'tolerancia_risco']]
-    
-    categorias = []
-    for _, row in dados_financeiros.iterrows():
-        if row['cagr'] > 0.2 and row['volatilidade'] < 0.3:
-            categoria = 'alta_crescimento_baixo_risco'
-        elif row['cagr'] > 0.2:
-            categoria = 'alta_crescimento_alto_risco'
-        elif row['volatilidade'] < 0.3:
-            categoria = 'baixo_crescimento_baixo_risco'
-        else:
-            categoria = 'baixo_crescimento_alto_risco'
-        categorias.append((row['ticker'], categoria))
+def gerar_casos_de_treinamento(n=10000):
+    casos = []
+    for _ in range(n):
+        idade = np.random.randint(18, 70)
+        profissao = np.random.choice(['engenheiro', 'medico', 'professor', 'advogado', 'empresario', 'analista'])
+        objetivo = np.random.choice(['viver de renda', 'comprar uma casa', 'educacao dos filhos', 'aposentadoria'])
+        tolerancia_risco = np.random.choice(['baixa', 'media', 'alta'])
+        recomendacao = np.random.choice([d['ticker'] for d in dados_financeiros])
+        casos.append({
+            'idade': idade,
+            'profissao': profissao,
+            'objetivo': objetivo,
+            'tolerancia_risco': tolerancia_risco,
+            'recomendacao': recomendacao
+        })
+    return casos
 
-    global tickers_para_categorias
-    tickers_para_categorias = {ticker: categoria for ticker, categoria in categorias}
-    categorias_filtradas = [tickers_para_categorias.get(ticker, None) for ticker in df['recomendacao']]
-    
-    valid_indices = [i for i, categoria in enumerate(categorias_filtradas) if categoria is not None]
-    X = X.iloc[valid_indices]
-    y = [categorias_filtradas[i] for i in valid_indices]
+casos = gerar_casos_de_treinamento()
 
-    if len(X) != len(y):
-        raise ValueError("Número de amostras e rótulos não correspondem. Verifique os dados de entrada.")
+# Definir ID de usuário para teste
+user_id = 'test_user'
 
-    modelo = DecisionTreeClassifier()
-    modelo.fit(X, y)
-    joblib.dump(modelo, "modelo_investimento.pkl")
-    logging.info("Modelo treinado com sucesso.")
+# Treinar modelo com dados financeiros
+treinar_modelo_com_dados_financeiros(user_id, [d['ticker'] for d in dados_financeiros], casos)
 
-if __name__ == "__main__":
-    casos = [
-        {"idade": 25, "profissao": "engenheiro", "objetivo": "aposentadoria", "tolerancia_risco": "alta", "recomendacao": "AAPL"},
-        {"idade": 40, "profissao": "médico", "objetivo": "crescimento de capital", "tolerancia_risco": "baixa", "recomendacao": "GOOGL"},
-        # Adicione mais casos aqui
-    ]
-    treinar_modelo(casos)
+# Carregar modelo treinado para verificar
+carregar_modelo_usuario(user_id)
